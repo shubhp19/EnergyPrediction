@@ -1,0 +1,100 @@
+---
+title: "dataModeling"
+author: "Group-2"
+date: "2023-12-06"
+output: pdf_document
+---
+```{r}
+#Using tidyverse, caret and kernlab
+library(tidyverse)
+library(caret)
+library(kernlab)
+```
+
+```{r}
+#Reading train and test data in proper time zone
+weatherES <- read_csv("weatherES.csv")
+weatherES$time <- with_tz(weatherES$time, tzone = "EST5EDT")
+
+weatherESTest <- read_csv("weatherESTest.csv")
+weatherESTest$time <- with_tz(weatherESTest$time, tzone = "EST5EDT")
+```
+```{r}
+#Building linear model on train data using total as dependent variable and all the other columns as independent columns
+lmOut <- lm(total ~., weatherES)
+```
+
+```{r}
+#Displaying the summary of the model
+summary(lmOut)
+```
+
+
+```{r}
+#Displaying the column names of the data
+colnames(weatherES)
+```
+
+
+
+```{r}
+#Aggregating data on county and day
+weatherDay <- weatherES %>% group_by(in.county, day(time)) %>%
+  summarise(total = sum(total),
+            temperature = mean(`Dry Bulb Temperature [°C]`),
+            humidity = mean(`Relative Humidity [%]`),
+            windSpeed = mean(`Wind Speed [m/s]`),
+            windDirection = mean(`Wind Direction [Deg]`),
+            ghRadiation = mean(`Global Horizontal Radiation [W/m2]`),
+            dnRadiation = mean(`Direct Normal Radiation [W/m2]`),
+            dhRadiation = mean(`Diffuse Horizontal Radiation [W/m2]`),
+            .groups = 'drop')
+```
+
+```{r}
+#Aggregating data on county and week
+weatherWeek <- weatherES %>% group_by(in.county,day= wday(time, week_start = getOption("lubridate.week.start", 7))) %>%
+  summarise(total = sum(total),
+            temperature = mean(`Dry Bulb Temperature [°C]`),
+            humidity = mean(`Relative Humidity [%]`),
+            windSpeed = mean(`Wind Speed [m/s]`),
+            windDirection = mean(`Wind Direction [Deg]`),
+            ghRadiation = mean(`Global Horizontal Radiation [W/m2]`),
+            dnRadiation = mean(`Direct Normal Radiation [W/m2]`),
+            dhRadiation = mean(`Diffuse Horizontal Radiation [W/m2]`),
+            .groups = 'drop')
+```
+
+
+```{r}
+#Building linear models for day and week
+lmOut1 <- lm(total ~., weatherDay)
+lmOut2 <- lm(total ~., weatherWeek)
+```
+
+```{r}
+#Displaying the summary of the model
+summary(lmOut1)
+```
+
+
+```{r}
+#Displaying the summary of the model
+summary(lmOut2)
+```
+
+
+```{r}
+#Predicting output for dependent variable
+pred <- predict(lmOut, weatherESTest)
+```
+
+```{r}
+#Adding the prediction to the data
+weatherESTest$totalPredicted <- pred
+```
+
+```{r}
+write_csv(weatherESTest, "D:\\SyracuseUniversity\\Semester1\\IST_687-IntroToDataScience\\IST687-FinalProject\\weatherESTestPred.csv")
+```
+

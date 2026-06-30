@@ -1,0 +1,106 @@
+---
+title: "IST687-FinalProject"
+author: "Group 2"
+date: "2023-11-15"
+output: pdf_document
+---
+
+```{r}
+#Using the arrow package
+library(arrow)
+#Using the tidyverse package
+library(tidyverse)
+```
+
+
+```{r}
+#Reading the static house info parquet file
+static_house_info <- read_parquet("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/static_house_info.parquet")
+```
+
+```{r}
+#Creating a vector of building ids
+bldg_id <- static_house_info$bldg_id
+```
+
+```{r}
+#Creating a vector of distinct counties
+county <- unique(static_house_info$in.county)
+```
+
+```{r}
+#Creating a vector of links of all house data
+bldg_links <- vector()
+for(i in bldg_id){
+  link <- 'https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/'
+  bldg_link <- paste(link,i,'.parquet', sep='')
+  bldg_links <-c(bldg_links,bldg_link)
+}
+```
+
+```{r}
+#Creating a vector of all column names except time
+temp <- read_parquet(bldg_links[1])
+colname <- colnames(temp)
+data <- data.frame(matrix(ncol=length(colname), nrow=0))
+names(data) <- colname
+name <- colnames(data[, -which(names(data) == "time")])
+```
+
+```{r}
+#Filtering the July data
+count=1 
+for(link in bldg_links){
+  tempDf <- read_parquet(link)
+  tempDf <- tempDf[month(tempDf$time)==7,]
+  tempDf$bldg_id <- bldg_id[count]
+  count <- count + 1
+  data <- rbind(data,tempDf)
+}
+```
+
+```{r}
+#Adding the energy consumed from different sources and creating a csv file of energy data
+data$total <- rowSums(data[ , name])
+
+
+name <- name[!name %in% c("bldg_id")]
+#write_csv(data, "D:\\SyracuseUniversity\\Semester1\\IST_687-IntroToDataScience\\IST687-FinalProject\\energyData.csv")
+```
+
+```{r}
+#Creating a vector of names of weather data files
+county_links <- vector()
+for(i in county){
+  link <- 'https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/weather/2023-weather-data/'
+  county_link <- paste(link,i,'.csv', sep='')
+  county_links <-c(county_links,county_link)
+}
+```
+
+```{r}
+temp <- read_csv(county_links[1])
+colname <- colnames(temp)
+data <- data.frame(matrix(ncol=length(colname), nrow=0))
+names(data) <- colname
+```
+
+```{r}
+#Using proper time zone
+count=1 
+for(link in county_links){
+  tempDf <- read_csv(link)
+  tempDf$county_id <- county[count]
+  tempDf$date_time <- with_tz(tempDf$date_time, tzone = "EST5EDT")
+  count <- count + 1
+  data <- rbind(data,tempDf)
+}
+```
+```{r}
+data <- data[month(data$date_time)==7,]
+```
+
+```{r}
+#write_csv(data, "D:\\SyracuseUniversity\\Semester1\\IST_687-IntroToDataScience\\IST687-FinalProject\\weatherData.csv")
+```
+
